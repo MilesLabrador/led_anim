@@ -1,5 +1,6 @@
 from tkinter import *
 import time
+import numpy as np
 class NeoPixel():
     """
     Class to mimic neopixel.NeoPixel object that controls leds from neopixel library
@@ -8,10 +9,12 @@ class NeoPixel():
     #def __init__(self, board, num_leds, pixel_order, auto_write):
     """Borrowing init parameters from Adafruit_CircuitPython_NeoPixel library"""
     def __init__(
-        self, pin, n, *, bpp=3, brightness=1.0, auto_write=True, pixel_order=None
+        self, pin, n, *, bpp=3, brightness=1.0, auto_write=True, pixel_order=None, ring=False, pixel_size=10
     ):
         self.tk = Tk()
-        self.canvas = Canvas(self.tk, width=800, height=500)
+        self.width = 800
+        self.height=500
+        self.canvas = Canvas(self.tk, width=self.width, height=self.height)
         self.tk.title("led animations!")
         # make all led elements stack on same canvas
         self.canvas.pack()
@@ -20,11 +23,24 @@ class NeoPixel():
         self.led_arr = []
         # set number of leds to n
         self.num_leds = n
-        
         # initialize all led objects that are part of our led array
-        for i in range(self.num_leds):
-            pixel_size = 10
-            self.led_arr.append(led(color="black", size=pixel_size, xpos= ((pixel_size/2))+(pixel_size*(i+1)), ypos=250, canvas=self.canvas))
+            
+        # If ring=True (LEDS are on ring-shaped PCB), set leds equidistant from each other in circle
+        if ring:
+            # set radius of pcb ring and add buffer of 1 pixel to keep it in view
+            r = (min(self.width, self.height)/2)-pixel_size
+            # Make equidistant circles (leds) around a center of a canvas!
+            origin_x = self.width/2
+            origin_y = self.height/2
+            for i in range(self.num_leds):
+                x = origin_x + r * np.cos(2 * np.pi * i / self.num_leds) 
+                y = origin_y + r * np.sin(2 * np.pi * i / self.num_leds)
+                self.led_arr.append(led(color="black", size=pixel_size, xpos= x, ypos=y, canvas=self.canvas))
+        else:
+            # default make leds in a line
+            for i in range(self.num_leds):
+                self.led_arr.append(led(color="black", size=pixel_size, xpos= ((pixel_size/2))+(pixel_size*(i+1)), ypos=250, canvas=self.canvas))
+        
         # IMPORTANT, we need the canvas to remain open
         #self.canvas.mainloop()
     def __getitem__(self, item_index):
@@ -67,8 +83,8 @@ class led:
         # Make circle centered at xpos ypos by defining x0,y0,x1,y1 around the center in accordance with size
         x0, y0, x1, y1 = xpos-(size/2), ypos-(size/2), xpos+(size/2), ypos+(size/2)
         self.color = color
-        self.shape = canvas.create_oval(x0, y0, x1, y1, fill=self.color)
         self.canvas = canvas
+        self.shape = self.canvas.create_oval(x0, y0, x1, y1, fill=self.color)
 
     def update_color(self, hex_color):
         self.color = hex_color
